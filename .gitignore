@@ -1,0 +1,19 @@
+# build
+build/
+*.o
+*.a
+*.exe
+
+# large binary files — download separately
+data/models/
+data/recordings/
+libs/onnxruntime/
+libs/googletest/
+
+# demo output
+demo/output/
+
+# IDE
+.vscode/
+.idea/
+*.DS_Store
