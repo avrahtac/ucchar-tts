@@ -2,61 +2,70 @@
 
 **उच्चार** — pronunciation, utterance (Marathi / Sanskrit)
 
-An open-source Indian Text-to-Speech engine built on the acoustic foundations of Indian classical music theory. Instead of adapting Western phonological frameworks to Indian languages, ucchar-tts derives its sound units from the swara system — the same theoretical basis that has described Indian vocal production for over two thousand years.
+ucchar-tts is an open-source Text-to-Speech engine for Indian languages, grounded in acoustic physics and classical Indian phonological theory. The engine derives its fundamental sound units from the swara system and models the speech synthesis pipeline as a signal processing problem, using the theoretical frameworks of communication systems and resonance acoustics.
 
 ---
 
-## The problem with existing Indian TTS
+## Motivation
 
-Every major Indian TTS engine in use today — commercial or open-source — is built on top of Western phonological theory. Text is mapped to IPA phonemes, those phonemes are passed through acoustic models designed around English speaker data, and a vocoder produces audio. The result is technically intelligible but feels wrong to Indian ears. The prosody is flat, the pitch movement is absent, and the natural ornaments that characterise Indian speech — the slight glide between syllables, the gentle vibrato on a long vowel — are entirely missing.
+Contemporary Indian TTS systems are predominantly constructed on phonological frameworks developed for Indo-European languages with different acoustic properties. Text is typically mapped to IPA phonemes, processed through acoustic models trained on corpora that underrepresent Indic phoneme distributions, and rendered through vocoders optimised for Western prosodic patterns. The resulting synthesis is intelligible but fails to reproduce the prosodic and timbral characteristics natural to Indian speech.
 
-The root cause is not data quantity. It is architectural. When you build an Indian TTS engine on English phoneme theory, you inherit all of its assumptions: five vowel categories instead of sixteen, no concept of resonance placement, no model of pitch ornament, and a stress system derived from Germanic languages rather than from Sanskrit chandas.
+This limitation is architectural in origin. Indian languages carry phonological information — vowel duration, resonance placement, pitch ornament — that has no representation in IPA-derived pipelines. The sixteen Sanskrit vowel forms are collapsed into approximations. The concept of sthana, the placement of resonance within the vocal tract, is absent entirely. Pitch ornaments such as gamak and meend, which occur naturally in connected Indian speech, have no counterpart in standard prosody models.
 
----
-
-## The ucchar-tts approach
-
-ucchar-tts treats the swara system as the primary acoustic unit rather than IPA phonemes.
-
-The seven swaras — Sa Re Ga Ma Pa Dha Ni — are not merely musical notes. Each corresponds to a natural resonance point in the human vocal tract, described in ancient treatises as sthanas: uras (chest), kantha (throat), talu (palate), murdha (crown), and nasa (nasal). This is a complete theory of vocal formant placement that maps directly onto modern acoustic phonetics. It was simply never used as the foundation for a TTS engine.
-
-From this foundation, ucchar-tts builds upward:
-
-- The sixteen Sanskrit vowels are derived from swara classes, giving the engine a richer and more accurate vowel space than any IPA-derived system
-- Consonant-vowel combinations (aksharas) are modelled as articulatory onsets on top of swara resonances, not as discrete phoneme sequences
-- Prosody is derived from laghu-guru syllable weight, the classical Sanskrit system for marking light and heavy syllables, which provides a natural stress and duration model
-- Pitch movement is modelled using ornament types — gamak (oscillation), meend (glide), andolan (slow vibrato), kan (grace note) — as first-class components of the synthesis pipeline
-
-No other open-source TTS engine uses any of these foundations.
+ucchar-tts proposes an alternative foundation derived from classical Indian acoustic theory, which has formally described these phenomena for over two thousand years.
 
 ---
 
-## Comparison with the Western TTS approach
+## Theoretical Foundation
+
+The human vocal tract functions as a resonant cavity whose modal frequencies correspond to the vowel sounds of speech. Classical Indian music theory identifies these resonant modes as swaras — Sa Re Ga Ma Pa Dha Ni — and associates each with a specific region of vocal tract activation described as a sthana.
+
+| Sthana | Region | Associated Swaras |
+|--------|--------|-------------------|
+| Uras | Chest | Sa |
+| Kantha | Throat | Re, Ga |
+| Talu | Palate | Ma, Pa |
+| Murdha | Crown | Dha, Ni |
+| NASA | Nasal cavity | Anusvara forms |
+
+This correspondence is not metaphorical. The sthanas describe formant target regions — the same acoustic parameters that modern speech science denotes F1, F2, F3. The swara system constitutes, in effect, a formant-based phoneme theory indigenous to Indian languages.
+
+From this basis, ucchar-tts constructs its synthesis pipeline:
+
+**Swara table.** Each swara is characterised by its fundamental frequency F0 and formant targets F1 F2 F3, derived from acoustic measurement of sargam reference recordings. This table replaces the IPA phoneme inventory as the primary acoustic unit.
+
+**Prosody model.** Timing and stress are derived from laghu-guru syllable classification, the metrical system of Sanskrit chandas. Laghu (light) syllables carry one matra of duration; guru (heavy) syllables carry two. This provides a physically motivated duration model that reflects the prosodic structure of Indic languages without requiring a learned component.
+
+**Ornament model.** Pitch movement is modelled using signal modulation operations. Gamak is implemented as frequency modulation of the carrier F0, with modulation index and rate derived from reference measurements. Meend is implemented as a linear or polynomial frequency sweep between two swara F0 values. Andolan is implemented as low-frequency amplitude modulation. These operations are drawn directly from communication systems theory.
+
+**Vocoder.** The acoustic features produced by the ucchar engine are rendered to a waveform by HiFi-GAN, a pretrained open-source neural vocoder, called via ONNX Runtime. This component operates as a fixed black-box renderer and requires no training or modification.
+
+---
+
+## Comparison
 
 ```
-Western TTS                          ucchar-tts
------------                          ----------
+Conventional pipeline                ucchar-tts pipeline
+---------------------                -------------------
 
 Text input                           Text input
     |                                    |
 IPA phoneme mapping                  Swara-vyanjana analysis
-(English-derived sound units)        (akshara -> swara class + sthana + matra)
+English-derived phoneme inventory    Akshara to swara class, sthana, matra
     |                                    |
-Acoustic model                       Prosody engine
-(flat pitch, no microtones)          (laghu/guru weight -> stress and duration)
+Statistical acoustic model           Laghu-guru prosody model
+Trained duration and pitch model     Rule-based duration from syllable weight
     |                                    |
-Vocoder                              Pitch and ornament model
-(robotic, wrong prosody)             (gamak / meend / andolan F0 curves)
+Prosody post-processing              Ornament engine
+Flat or learned pitch contour        FM/AM modulation — gamak, meend, andolan
     |                                    |
-Audio output                         Sthana-aware acoustic model
-(intelligible, unnatural)            (chest / throat / head formant targets)
-                                         |
-                                     Neural vocoder (HiFi-GAN via ONNX)
+Neural vocoder                       Sthana-aware formant synthesis
+Waveform from mel-spectrogram        F1 F2 F3 targets per swara class
+    |                                    |
+Audio output                         HiFi-GAN via ONNX Runtime
                                          |
                                      Audio output
-                                     (natural Indian speech)
 ```
-
 ## Data
 
 ucchar-tts does not require large training datasets. The core acoustic parameters — swara frequencies, formant targets, ornament curves — are derived from a small set of precisely recorded reference performances of the sargam (Sa Re Ga Ma Pa Dha Ni Sa) with andolan and meend. These measurements populate the lookup tables in `data/swaras.json` and `data/aksharas.json`.
